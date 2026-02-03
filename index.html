@@ -47,7 +47,7 @@
             100% { transform: scale(1); }
         }
 
-        /* Obszar przycisków - teraz oba przyciski są tu wyśrodkowane na starcie */
+        /* Obszar przycisków */
         .button-area {
             display: flex;
             justify-content: center;
@@ -87,14 +87,15 @@
             color: #ff4d8d;
             z-index: 15;
             white-space: nowrap;
-            /* Transition dla płynnej ucieczki zostanie aktywowane w JS po pierwszym ruchu */
+            /* Płynny powrót do bazy */
+            transition: left 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
+                        top 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+                        transform 0.2s;
         }
 
-        /* Klasa dodawana przez JS, gdy przycisk zaczyna uciekać */
+        /* Klasa dodawana przez JS, gdy przycisk ucieka */
         #btn-no.escaping {
             position: fixed;
-            transition: left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
-                        top 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
         /* Canvas dla konfetti */
@@ -131,7 +132,7 @@
 
     <div class="container">
         <h1>Will you be my Valentine?</h1>
-        <div class="button-area">
+        <div class="button-area" id="btn-container">
             <button id="btn-yes" class="btn">YES</button>
             <button id="btn-no" class="btn">NO</button>
         </div>
@@ -140,60 +141,91 @@
     <script>
         const btnNo = document.getElementById('btn-no');
         const btnYes = document.getElementById('btn-yes');
+        const btnContainer = document.getElementById('btn-container');
         const canvas = document.getElementById('confetti-canvas');
         const ctx = canvas.getContext('2d');
 
-        // --- OBSŁUGA PRZYCISKU "NO" (UCIECZKA) ---
+        let resetTimer = null;
+
+        // --- OBSŁUGA PRZYCISKU "NO" (UCIECZKA I POWRÓT) ---
 
         function moveButton(e) {
-            // Jeśli to pierwszy ruch, przełączamy przycisk na tryb 'fixed', 
-            // zachowując jego aktualną pozycję na ekranie, aby uniknąć skoku.
+            // Anuluj powrót, jeśli właśnie uciekamy
+            if (resetTimer) {
+                clearTimeout(resetTimer);
+                resetTimer = null;
+            }
+
+            // Jeśli to pierwszy ruch, przełączamy na fixed
             if (!btnNo.classList.contains('escaping')) {
                 const rect = btnNo.getBoundingClientRect();
                 btnNo.style.left = rect.left + 'px';
                 btnNo.style.top = rect.top + 'px';
                 btnNo.classList.add('escaping');
-                
-                // Wymuszamy reflow, żeby przeglądarka zaaplikowała pozycję fixed 
-                // przed wykonaniem właściwego ruchu (inaczej transition nie zadziała płynnie za pierwszym razem).
-                btnNo.offsetHeight; 
+                btnNo.offsetHeight; // force reflow
             }
 
             const btnRect = btnNo.getBoundingClientRect();
-            
-            // Marginesy, żeby przycisk nie chował się za krawędzią ekranu
-            const padding = 50;
+            const padding = 60;
             const maxX = window.innerWidth - btnRect.width - padding;
             const maxY = window.innerHeight - btnRect.height - padding;
 
             let randomX = Math.random() * maxX;
             let randomY = Math.random() * maxY;
 
-            // Unikanie sytuacji, w której nowa pozycja jest zbyt blisko kursora
+            // Unikanie kursora
             if (e) {
                 const mouseX = e.clientX || (e.touches ? e.touches[0].clientX : 0);
                 const mouseY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
                 const dist = Math.hypot(randomX - mouseX, randomY - mouseY);
-                if (dist < 200) {
-                    randomX = (randomX + 300) % maxX;
-                    randomY = (randomY + 300) % maxY;
+                if (dist < 250) {
+                    randomX = (randomX + 400) % maxX;
+                    randomY = (randomY + 400) % maxY;
                 }
             }
 
             btnNo.style.left = Math.max(padding, randomX) + 'px';
             btnNo.style.top = Math.max(padding, randomY) + 'px';
+
+            // Uruchom timer powrotu po 2 sekundach bezczynności myszki nad przyciskiem
+            startResetTimer();
         }
 
-        // Ucieczka na najechanie kursorem
+        function startResetTimer() {
+            if (resetTimer) clearTimeout(resetTimer);
+            resetTimer = setTimeout(() => {
+                returnToHome();
+            }, 2000);
+        }
+
+        function returnToHome() {
+            if (!btnNo.classList.contains('escaping')) return;
+
+            // Wyłączamy tryb ucieczki
+            btnNo.classList.remove('escaping');
+            // Czyścimy style inline, aby flexbox znów go wyśrodkował
+            btnNo.style.left = '';
+            btnNo.style.top = '';
+            resetTimer = null;
+        }
+
+        // Ucieczka na najechanie
         btnNo.addEventListener('mouseenter', moveButton);
         
-        // Ucieczka na kliknięcie
+        // Reset timera, jeśli myszka opuści przycisk, ale nie wróciliśmy jeszcze (dla pewności)
+        btnNo.addEventListener('mouseleave', () => {
+            if (btnNo.classList.contains('escaping')) {
+                startResetTimer();
+            }
+        });
+
+        // Obsługa kliknięcia (ucieka zamiast klikać)
         btnNo.addEventListener('click', (e) => {
             e.preventDefault();
             moveButton(e);
         });
 
-        // Ucieczka na dotyk (mobile)
+        // Mobile
         btnNo.addEventListener('touchstart', (e) => {
             e.preventDefault();
             moveButton(e.touches[0]);
@@ -288,12 +320,8 @@
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            // Jeśli przycisk uciekł, upewniamy się, że nie został poza ekranem po resize
             if (btnNo.classList.contains('escaping')) {
-                const btnRect = btnNo.getBoundingClientRect();
-                if (btnRect.right > window.innerWidth || btnRect.bottom > window.innerHeight) {
-                    moveButton();
-                }
+                returnToHome(); // Wracamy do bazy przy zmianie rozmiaru dla porządku
             }
         }
         window.addEventListener('resize', resizeCanvas);
