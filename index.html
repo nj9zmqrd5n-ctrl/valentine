@@ -29,6 +29,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            width: 100%;
         }
 
         /* Responsywny napis z funkcją clamp */
@@ -46,13 +47,14 @@
             100% { transform: scale(1); }
         }
 
-        /* Obszar przycisków */
+        /* Obszar przycisków - teraz oba przyciski są tu wyśrodkowane na starcie */
         .button-area {
             display: flex;
             justify-content: center;
             align-items: center;
             gap: 30px;
             min-height: 100px;
+            width: 100%;
         }
 
         /* Bazowe style przycisków */
@@ -71,7 +73,6 @@
         #btn-yes {
             background-color: #4CAF50;
             color: white;
-            position: relative;
             z-index: 20;
         }
 
@@ -80,15 +81,20 @@
             transform: scale(1.1);
         }
 
-        /* Przycisk NIE - uciekający */
+        /* Przycisk NIE - początkowo statyczny, by był wyśrodkowany z TAK */
         #btn-no {
             background-color: white;
             color: #ff4d8d;
-            position: fixed; /* Pozwala na ucieczkę po całym ekranie */
             z-index: 15;
+            white-space: nowrap;
+            /* Transition dla płynnej ucieczki zostanie aktywowane w JS po pierwszym ruchu */
+        }
+
+        /* Klasa dodawana przez JS, gdy przycisk zaczyna uciekać */
+        #btn-no.escaping {
+            position: fixed;
             transition: left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
                         top 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            white-space: nowrap;
         }
 
         /* Canvas dla konfetti */
@@ -137,17 +143,22 @@
         const canvas = document.getElementById('confetti-canvas');
         const ctx = canvas.getContext('2d');
 
-        // Ustawienie początkowej pozycji przycisku NO obok YES
-        function initNoButton() {
-            const yesRect = btnYes.getBoundingClientRect();
-            btnNo.style.left = (yesRect.right + 30) + 'px';
-            btnNo.style.top = yesRect.top + 'px';
-        }
-        window.onload = initNoButton;
-
         // --- OBSŁUGA PRZYCISKU "NO" (UCIECZKA) ---
 
         function moveButton(e) {
+            // Jeśli to pierwszy ruch, przełączamy przycisk na tryb 'fixed', 
+            // zachowując jego aktualną pozycję na ekranie, aby uniknąć skoku.
+            if (!btnNo.classList.contains('escaping')) {
+                const rect = btnNo.getBoundingClientRect();
+                btnNo.style.left = rect.left + 'px';
+                btnNo.style.top = rect.top + 'px';
+                btnNo.classList.add('escaping');
+                
+                // Wymuszamy reflow, żeby przeglądarka zaaplikowała pozycję fixed 
+                // przed wykonaniem właściwego ruchu (inaczej transition nie zadziała płynnie za pierwszym razem).
+                btnNo.offsetHeight; 
+            }
+
             const btnRect = btnNo.getBoundingClientRect();
             
             // Marginesy, żeby przycisk nie chował się za krawędzią ekranu
@@ -160,7 +171,9 @@
 
             // Unikanie sytuacji, w której nowa pozycja jest zbyt blisko kursora
             if (e) {
-                const dist = Math.hypot(randomX - e.clientX, randomY - e.clientY);
+                const mouseX = e.clientX || (e.touches ? e.touches[0].clientX : 0);
+                const mouseY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
+                const dist = Math.hypot(randomX - mouseX, randomY - mouseY);
                 if (dist < 200) {
                     randomX = (randomX + 300) % maxX;
                     randomY = (randomY + 300) % maxY;
@@ -174,7 +187,7 @@
         // Ucieczka na najechanie kursorem
         btnNo.addEventListener('mouseenter', moveButton);
         
-        // Ucieczka na kliknięcie (dla desperatów)
+        // Ucieczka na kliknięcie
         btnNo.addEventListener('click', (e) => {
             e.preventDefault();
             moveButton(e);
@@ -254,8 +267,6 @@
                 particles.push(new Particle());
             }
             if (!animationFrame) animateConfetti();
-            
-            // Usunięto zmiany tekstów i UI zgodnie z prośbą "bez żadnego i love you"
         });
 
         // --- PŁYWAJĄCE SERDUSZKA W TLE ---
@@ -277,7 +288,13 @@
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            initNoButton(); // Przywróć pozycję przy zmianie rozmiaru
+            // Jeśli przycisk uciekł, upewniamy się, że nie został poza ekranem po resize
+            if (btnNo.classList.contains('escaping')) {
+                const btnRect = btnNo.getBoundingClientRect();
+                if (btnRect.right > window.innerWidth || btnRect.bottom > window.innerHeight) {
+                    moveButton();
+                }
+            }
         }
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
