@@ -1,0 +1,288 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Will you be my Valentine?</title>
+    <style>
+        /* Stylizacja ogólna i tło */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #ff4d8d, #ff9ac1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Kontener główny */
+        .container {
+            text-align: center;
+            z-index: 10;
+            user-select: none;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Responsywny napis z funkcją clamp */
+        h1 {
+            color: white;
+            font-size: clamp(2.5rem, 10vw, 5rem);
+            margin-bottom: 50px;
+            text-shadow: 2px 2px 15px rgba(0, 0, 0, 0.3);
+            animation: heartbeat 1.5s ease-in-out infinite;
+        }
+
+        @keyframes heartbeat {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* Obszar przycisków */
+        .button-area {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            min-height: 100px;
+        }
+
+        /* Bazowe style przycisków */
+        .btn {
+            padding: 18px 40px;
+            font-size: 1.6rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Przycisk TAK */
+        #btn-yes {
+            background-color: #4CAF50;
+            color: white;
+            position: relative;
+            z-index: 20;
+        }
+
+        #btn-yes:hover {
+            background-color: #45a049;
+            transform: scale(1.1);
+        }
+
+        /* Przycisk NIE - uciekający */
+        #btn-no {
+            background-color: white;
+            color: #ff4d8d;
+            position: fixed; /* Pozwala na ucieczkę po całym ekranie */
+            z-index: 15;
+            transition: left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
+                        top 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            white-space: nowrap;
+        }
+
+        /* Canvas dla konfetti */
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        /* Serduszka w tle */
+        .floating-heart {
+            position: fixed;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 20px;
+            pointer-events: none;
+            z-index: 1;
+            animation: floatUp 5s linear infinite;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+        }
+    </style>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+
+    <canvas id="confetti-canvas"></canvas>
+
+    <div class="container">
+        <h1>Will you be my Valentine?</h1>
+        <div class="button-area">
+            <button id="btn-yes" class="btn">YES</button>
+            <button id="btn-no" class="btn">NO</button>
+        </div>
+    </div>
+
+    <script>
+        const btnNo = document.getElementById('btn-no');
+        const btnYes = document.getElementById('btn-yes');
+        const canvas = document.getElementById('confetti-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Ustawienie początkowej pozycji przycisku NO obok YES
+        function initNoButton() {
+            const yesRect = btnYes.getBoundingClientRect();
+            btnNo.style.left = (yesRect.right + 30) + 'px';
+            btnNo.style.top = yesRect.top + 'px';
+        }
+        window.onload = initNoButton;
+
+        // --- OBSŁUGA PRZYCISKU "NO" (UCIECZKA) ---
+
+        function moveButton(e) {
+            const btnRect = btnNo.getBoundingClientRect();
+            
+            // Marginesy, żeby przycisk nie chował się za krawędzią ekranu
+            const padding = 50;
+            const maxX = window.innerWidth - btnRect.width - padding;
+            const maxY = window.innerHeight - btnRect.height - padding;
+
+            let randomX = Math.random() * maxX;
+            let randomY = Math.random() * maxY;
+
+            // Unikanie sytuacji, w której nowa pozycja jest zbyt blisko kursora
+            if (e) {
+                const dist = Math.hypot(randomX - e.clientX, randomY - e.clientY);
+                if (dist < 200) {
+                    randomX = (randomX + 300) % maxX;
+                    randomY = (randomY + 300) % maxY;
+                }
+            }
+
+            btnNo.style.left = Math.max(padding, randomX) + 'px';
+            btnNo.style.top = Math.max(padding, randomY) + 'px';
+        }
+
+        // Ucieczka na najechanie kursorem
+        btnNo.addEventListener('mouseenter', moveButton);
+        
+        // Ucieczka na kliknięcie (dla desperatów)
+        btnNo.addEventListener('click', (e) => {
+            e.preventDefault();
+            moveButton(e);
+        });
+
+        // Ucieczka na dotyk (mobile)
+        btnNo.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            moveButton(e.touches[0]);
+        });
+
+
+        // --- OBSŁUGA PRZYCISKU "YES" (CELEBRACJA) ---
+
+        let particles = [];
+        let animationFrame;
+
+        function playCelebrationSound() {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+            
+            notes.forEach((freq, index) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime + index * 0.08);
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime + index * 0.08);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + index * 0.08 + 0.6);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(audioCtx.currentTime + index * 0.08);
+                osc.stop(audioCtx.currentTime + index * 0.08 + 0.6);
+            });
+        }
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = canvas.height + 10;
+                this.size = Math.random() * 10 + 5;
+                this.speedX = Math.random() * 8 - 4;
+                this.speedY = Math.random() * -20 - 10;
+                this.color = `hsl(${Math.random() * 360}, 80%, 60%)`;
+                this.gravity = 0.4;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.speedY += this.gravity;
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function animateConfetti() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach((p, index) => {
+                p.update();
+                p.draw();
+                if (p.y > canvas.height + 20) particles.splice(index, 1);
+            });
+
+            if (particles.length > 0) {
+                animationFrame = requestAnimationFrame(animateConfetti);
+            } else {
+                animationFrame = null;
+            }
+        }
+
+        btnYes.addEventListener('click', () => {
+            playCelebrationSound();
+            for (let i = 0; i < 200; i++) {
+                particles.push(new Particle());
+            }
+            if (!animationFrame) animateConfetti();
+            
+            // Usunięto zmiany tekstów i UI zgodnie z prośbą "bez żadnego i love you"
+        });
+
+        // --- PŁYWAJĄCE SERDUSZKA W TLE ---
+
+        function createHeart() {
+            const heart = document.createElement('div');
+            heart.classList.add('floating-heart');
+            heart.innerHTML = '❤️';
+            heart.style.left = Math.random() * 100 + 'vw';
+            heart.style.animationDuration = (Math.random() * 3 + 2) + 's';
+            heart.style.opacity = Math.random();
+            document.body.appendChild(heart);
+            setTimeout(() => heart.remove(), 5000);
+        }
+        setInterval(createHeart, 400);
+
+        // --- OBSŁUGA RESIZE ---
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            initNoButton(); // Przywróć pozycję przy zmianie rozmiaru
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+    </script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
