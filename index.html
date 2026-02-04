@@ -68,7 +68,7 @@
             100% { transform: scale(1); }
         }
 
-        /* Obszar przycisków */
+        /* Obszar przycisków - POPRAWIONE WYŚRODKOWANIE */
         .button-area {
             display: flex;
             justify-content: center;
@@ -163,7 +163,7 @@
         <h1 id="main-title">Może nie Walentynki — za to na pączki razem?</h1>
         <div class="button-area">
             <button id="btn-yes" class="btn">TAK! 🍩</button>
-            <div id="btn-no-placeholder" style="width: 140px; height: 60px;">
+            <div id="btn-no-placeholder" style="width: 150px; height: 65px; display: flex; justify-content: center; align-items: center;">
                 <button id="btn-no" class="btn">NIE</button>
             </div>
         </div>
@@ -287,7 +287,6 @@
 
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            // Dynamiczne ograniczanie liczby cząsteczek dla płynności
             if (particles.length > 800) particles = particles.slice(-800);
             
             particles.forEach((p, i) => {
@@ -295,24 +294,24 @@
                 p.draw();
             });
             
-            // Usuwamy cząsteczki poza ekranem
             particles = particles.filter(p => p.y < canvas.height + 20);
-            
             animationFrame = requestAnimationFrame(animate);
         }
 
         btnYes.addEventListener('click', () => {
             playFanfare();
             
-            // Dodajemy nową porcję konfetti przy każdym kliknięciu
+            // Zmiana napisu zgodnie z prośbą
+            mainTitle.innerText = "Może nie Walentynki — za to na pączki razem... i na łyżwy! ⛸️🍩❤️";
+
+            // Dodajemy nową porcję konfetti
             for (let i = 0; i < 150; i++) {
                 const p = new Confetti();
-                // Niektóre zaczynają od góry, niektóre z miejsca przycisku
                 if (Math.random() > 0.5) {
                     const rect = btnYes.getBoundingClientRect();
                     p.x = rect.left + rect.width / 2;
                     p.y = rect.top;
-                    p.speedY = -(Math.random() * 10 + 5); // Wyrzut do góry
+                    p.speedY = -(Math.random() * 10 + 5);
                     p.speedX = Math.random() * 10 - 5;
                 }
                 particles.push(p);
@@ -323,7 +322,7 @@
 
         // --- TŁO ---
 
-        const icons = ['❤️', '🍩', '💖', '🧁', '🍪'];
+        const icons = ['❤️', '🍩', '💖', '🧁', '🍪', '⛸️'];
         function createFloating() {
             const el = document.createElement('div');
             el.className = 'floating-element';
